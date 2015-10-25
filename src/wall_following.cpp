@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include "std_msgs/Bool.h"
+#include "std_msgs/Empty.h"
 #include "nord_messages/Command.h"
 
 enum class action : uint32_t
@@ -19,14 +20,15 @@ bool publish(action a, float, bool await_result = false);
 
 #include "seqsel/WallFollow.hpp"
 
+WallFollow wf;
 ros::Publisher mission_control;
-ros::Subscriber mission_result;
-bool has_result;
+bool has_result = false;
 bool result;
+bool should_abort = false;
 
 bool publish(action a, const std::vector<float>& values, bool await_result)
 {
-    std::cout << "trying " << uint32_t(a);
+    std::cout << "running " << uint32_t(a);
     for (auto value : values)
         std::cout << " " << value;
     if (await_result)
@@ -45,6 +47,13 @@ bool publish(action a, const std::vector<float>& values, bool await_result)
         static ros::Rate r(10);
         while (!has_result && ros::ok())
         {
+            if (should_abort)
+            {
+                should_abort = false;
+                std::cout << "abort!" << std::endl;
+                return wf.run();
+            }
+
             ros::spinOnce();
             r.sleep();
         }
@@ -64,14 +73,18 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "nord_houston_wall_following");
     ros::NodeHandle n;
 
-    WallFollow wf;
-
     mission_control = n.advertise<nord_messages::Command>("/nord/houston/mission_control", 10);
-    mission_result = n.subscribe<std_msgs::Bool>("/nord/houston/mission_result", 10,
-                                                 [&](const std_msgs::Bool::ConstPtr b) {
-                                                    has_result = true;
-                                                    result = b->data;
-                                                 });
+    ros::Subscriber mission_result =
+        n.subscribe<std_msgs::Bool>("/nord/houston/mission_result", 10,
+                                    [&](const std_msgs::Bool::ConstPtr b) {
+                                        has_result = true;
+                                        result = b->data;
+                                    });
+    ros::Subscriber mission_abort =
+        n.subscribe<std_msgs::Empty>("/nord/houston/mission_abort", 10,
+                                     [&](const std_msgs::Empty::ConstPtr e) {
+                                         should_abort = true;
+                                     });
 
     ros::Rate r(10);
     while (ros::ok())
