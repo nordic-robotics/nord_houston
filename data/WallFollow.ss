@@ -16,7 +16,7 @@ selector WallFollow:
     sequence Stuck:
         cond delta_encoder_left < #encoder_min
         cond delta_encoder_right < #encoder_min
-        call publish(action::backwards_distance, 0.1f)
+        call publish(action::backwards_distance, 0.1f, true)
     sequence FrontWall:
         cond ir_front < #front_min
         selector Turn:
