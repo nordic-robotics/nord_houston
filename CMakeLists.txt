@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 2.8.3)
 project(nord_houston)
 set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 
-message(STATUS "Building SeqSel")
-execute_process(COMMAND ghc -O2 SeqSel/Parser.hs SeqSel/Printer.hs Main.hs -o Main -Wall
-                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/seqsel")
-message(STATUS "Transpiling behaviour trees")
-execute_process(COMMAND seqsel/Main data/WallFollow.ss src/seqsel/WallFollow.hpp
-                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+add_custom_target(seqsel ALL
+                  COMMAND ghc -O2 SeqSel/Parser.hs SeqSel/Printer.hs Main.hs -o Main -Wall
+                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/seqsel"
+                  COMMENT "Building SeqSel")
+add_custom_target(trees ALL
+                  COMMAND seqsel/Main data/WallFollow.ss src/seqsel/WallFollow.hpp
+                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+                  COMMENT "Transpiling behaviour trees")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -143,7 +145,7 @@ add_executable(wall_following src/wall_following.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(nord_houston_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(wall_following ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(wall_following ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} trees)
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(nord_houston_node
