@@ -3,14 +3,14 @@
 #define encoder_min 0.1f
 #define normal_speed 0.5f
 
-#var float delta_encoder_left
-#var float delta_encoder_right
-#var float ir_front
-#var float ir_back
-#var float ir_left_front
-#var float ir_left_back
-#var float ir_right_front
-#var float ir_right_back
+#var float delta_encoder_left = 0
+#var float delta_encoder_right = 0
+#var float ir_front = 0
+#var float ir_back = 0
+#var float ir_left_front = 0
+#var float ir_left_back = 0
+#var float ir_right_front = 0
+#var float ir_right_back = 0
 
 selector WallFollow:
     sequence Stuck:
