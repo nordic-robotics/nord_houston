@@ -4,6 +4,7 @@ import Prelude hiding (sequence)
 import Text.Parsec
 import Text.Parsec.String
 import Data.String.Utils
+import Control.Applicative ((*>), (<*), (<*>), (<$>), pure)
 import Control.Monad hiding (sequence)
 
 data Var = Var String
