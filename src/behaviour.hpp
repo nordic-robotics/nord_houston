@@ -2,6 +2,8 @@
 
 #include "ros/ros.h"
 #include "nord_messages/Command.h"
+#include "nord_messages/IRSensors.h"
+#include "ras_arduino_msgs/Encoders.h"
 #include <vector>
 #include <utility>
 #include <string>
@@ -32,6 +34,20 @@ public:
             n.subscribe<std_msgs::Empty>("/nord/houston/mission_abort", 10,
                 [&](const std_msgs::Empty::ConstPtr e) {
                     should_abort = true;
+                }),
+            n.subscribe<ras_arduino_msgs::Encoders>("/arduino/encoders", 10,
+                [&](const ras_arduino_msgs::Encoders::ConstPtr& e) {
+                    tree.delta_encoder_left = e->delta_encoder1;
+                    tree.delta_encoder_right = e->delta_encoder2;
+                }),
+            n.subscribe<nord_messages::IRSensors>("/nord/sensors/ir", 10,
+                [&](const nord_messages::IRSensors::ConstPtr& ir) {
+                    tree.ir_front = ir->front;
+                    tree.ir_back = ir->back;
+                    tree.ir_left_front = ir->left_front;
+                    tree.ir_left_back = ir->left_back;
+                    tree.ir_right_front = ir->right_front;
+                    tree.ir_right_back = ir->right_back;
                 })
         }),
           mission_control(n.advertise<Command>("/nord/houston/mission_control", 10))
