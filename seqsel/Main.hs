@@ -25,6 +25,6 @@ main = do
             Left e -> do
                 print e
                 exitFailure
-            Right (vars, expr) -> do
-                writeFile outfile (L.unpack (printTree vars expr))
+            Right (vars, params, expr) -> do
+                writeFile outfile (L.unpack (printTree vars params expr))
                 exitSuccess

@@ -1,4 +1,4 @@
-module SeqSel.Parser (Var(..), Expr(..), parseFile, name) where
+module SeqSel.Parser (Var(..), Param(..), Expr(..), parseFile, name) where
 
 import Prelude hiding (sequence)
 import Text.Parsec
@@ -8,6 +8,9 @@ import Control.Applicative ((*>), (<*), (<*>), (<$>), pure)
 import Control.Monad hiding (sequence)
 
 data Var = Var String
+            deriving (Eq, Show)
+
+data Param = Param String
             deriving (Eq, Show)
 
 data Expr = Selector String [Expr]
@@ -68,6 +71,14 @@ var = do
     skipMany newline
     return (Var v)
 
+param :: Parser Param
+param = do
+    dropString "#param"
+    spaces1
+    p <- rest
+    skipMany newline
+    return (Param p)
+
 nodeName :: Parser String
 nodeName = (:) <$> upper <*> many letter <* char ':' <* skipMany newline 
 
@@ -108,14 +119,15 @@ expr indent = do
       <|> try cond
       <|> call)
 
-file :: Parser ([Var], Expr)
+file :: Parser ([Var], [Param], Expr)
 file = do
     defs <- many (try define)
     vars <- many (try var)
+    params <- many (try param)
     tree <- expr 0
-    return (vars, replaceDefs defs tree)
+    return (vars, params, replaceDefs defs tree)
 
-parseFile :: FilePath -> IO (Either ParseError ([Var], Expr))
+parseFile :: FilePath -> IO (Either ParseError ([Var], [Param], Expr))
 parseFile fname = do
     input <- readFile fname
     return (runParser file () fname input)

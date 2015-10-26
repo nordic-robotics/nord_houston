@@ -27,15 +27,18 @@ printExpr _ (Call fun) = L.pack fun
 printVar :: Int -> Var -> L.Text
 printVar n (Var str) = indented n (L.pack str <> ";")
 
-printFunc :: Int -> Expr -> L.Text
-printFunc n expr = indented n "bool run()"
-                <> indented n "{"
-                <> indented (n + 4) ("return" <> printExpr (n + 4) expr <> ";")
-                <> indented n "}"
+printParams :: [Param] -> L.Text
+printParams = L.intercalate ", " . map (\(Param p) -> L.pack p)
 
-printTree :: [Var] -> Expr -> L.Text
-printTree vars expr = "#pragma once\n\nclass " <> L.pack (name expr)
-                   <> "\n{\npublic:" <> vars'
-                   <> "\n" <> printFunc 4 expr <> "\n};"
+printFunc :: Int -> [Param] -> Expr -> L.Text
+printFunc n params expr = indented n "bool run(" <> printParams params <> ")"
+                       <> indented n "{"
+                       <> indented (n + 4) ("return" <> printExpr (n + 4) expr <> ";")
+                       <> indented n "}"
+
+printTree :: [Var] -> [Param] -> Expr -> L.Text
+printTree vars params expr = "#pragma once\n\nclass " <> L.pack (name expr)
+                          <> "\n{\npublic:" <> vars'
+                          <> "\n" <> printFunc 4 params expr <> "\n};"
   where
     vars' = L.concat $ map (printVar 4) vars
