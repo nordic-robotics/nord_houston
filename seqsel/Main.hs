@@ -22,5 +22,9 @@ main = do
         let outfile = if length args > 1 then args !! 1 else tohpp infile
         input <- parseFile infile
         case input of
-            Left e -> print e
-            Right (vars, expr) -> writeFile outfile (L.unpack (printTree vars expr))
+            Left e -> do
+                print e
+                exitFailure
+            Right (vars, expr) -> do
+                writeFile outfile (L.unpack (printTree vars expr))
+                exitSuccess

@@ -9,7 +9,8 @@ add_custom_target(seqsel ALL
 add_custom_target(trees ALL
                   COMMAND seqsel/Main data/WallFollow.ss src/seqsel/WallFollow.hpp
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                  COMMENT "Transpiling behaviour trees")
+                  COMMENT "Transpiling behaviour trees"
+                  DEPENDS seqsel)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
