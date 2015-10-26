@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(nord_houston)
-set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "--std=c++14 ${CMAKE_CXX_FLAGS}")
 
 add_custom_target(seqsel ALL
                   COMMAND ghc -O2 SeqSel/Parser.hs SeqSel/Printer.hs Main.hs -o Main -Wall
