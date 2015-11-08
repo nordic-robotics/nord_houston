@@ -5,16 +5,17 @@
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
 #include "behaviour.hpp"
-#include "seqsel/WallFollow.hpp"
+#include "mission_one_behaviour.hpp"
+#include "seqsel/MissionOne.hpp"
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "nord_houston_wall_following");
     ros::NodeHandle n;
 
-    behaviour<WallFollow> wf(n);
+    mission_one_behaviour<MissionOne> b(n);
 
-    wf.behave();
+    b.behave();
 
     return 0;
 }

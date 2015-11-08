@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(nord_houston)
-set(CMAKE_CXX_FLAGS "--std=c++14 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "--std=c++14 -O3 -Wall -Wno-reorder ${CMAKE_CXX_FLAGS}")
 
 add_custom_target(seqsel ALL
                   COMMAND ghc -O2 SeqSel/Parser.hs SeqSel/Printer.hs Main.hs -o Main -Wall
@@ -8,6 +8,7 @@ add_custom_target(seqsel ALL
                   COMMENT "Building SeqSel")
 add_custom_target(trees ALL
                   COMMAND seqsel/Main data/WallFollow.ss src/seqsel/WallFollow.hpp
+                  COMMAND seqsel/Main data/MissionOne.ss src/seqsel/MissionOne.hpp
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
                   COMMENT "Transpiling behaviour trees"
                   DEPENDS seqsel)
@@ -18,6 +19,7 @@ add_custom_target(trees ALL
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  nord_messages
 )
 
 ## System dependencies are found with CMake's conventions
@@ -53,7 +55,7 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
-catkin_package(CATKIN_DEPENDS message_runtime)
+catkin_package(CATKIN_DEPENDS message_runtime nord_messages)
 
 ## Generate messages in the 'msg' folder
 # add_message_files(
@@ -141,18 +143,18 @@ include_directories(
 
 ## Declare a C++ executable
 # add_executable(nord_houston_node src/nord_houston_node.cpp)
-add_executable(wall_following src/wall_following.cpp)
+add_executable(mission_one src/mission_one.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(nord_houston_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(wall_following ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} trees)
+add_dependencies(mission_one ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} trees)
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(nord_houston_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(wall_following
+target_link_libraries(mission_one
   ${catkin_LIBRARIES}
 )
 
