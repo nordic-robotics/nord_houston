@@ -1,10 +1,11 @@
-#define classify_range 0.6f
+#define classify_range 0.8f
 
+#var float align_range = 0.6f
 #var float time_left
-#var std::vector<point> path
-#var std::vector<point> unknown
-#var std::vector<std::pair<point, std::string>> classified
-#var std::vector<std::pair<point, std::string>> announced
+#var std::vector<point<2>> path
+#var std::vector<point<2>> unknown
+#var std::vector<nord_messages::Classification> classified
+#var std::vector<nord_messages::Classification> announced
 #var nord_messages::PoseEstimate pose
 
 #param mission_one_behaviour<MissionOne>& b
