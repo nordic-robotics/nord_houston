@@ -101,10 +101,16 @@ public:
         srv.request.id = id;
         if (!client.call(srv))
         {
-            std::cout << "\tcall failed!" << std::endl;
+            std::cout << "call failed!" << std::endl;
             return false;
         }
         std::string new_class = srv.response.classification.data;
+
+        if (new_class == "")
+        {
+            std::cout << "classification failed!" << std::endl;
+            return false;
+        }
 
         base::tree.unknown.erase(std::remove_if(base::tree.unknown.begin(),
                                                 base::tree.unknown.end(),
