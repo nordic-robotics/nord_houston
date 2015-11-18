@@ -11,15 +11,6 @@
 #include <cmath>
 #include <algorithm>
 
-/*namespace
-{
-    float distance_between(const nord_messages::Classification& c0,
-                           const nord_messages::Classification& c1)
-    {
-        return std::hypot(c0.loc.x - c1.loc.x, c0.loc.y - c1.loc.y);
-    }
-}*/
-
 template<class BT>
 class mission_one_behaviour : public behaviour<BT, mission_one_behaviour<BT>>
 {
