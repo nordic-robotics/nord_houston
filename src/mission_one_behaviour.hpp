@@ -3,9 +3,8 @@
 #include "behaviour.hpp"
 #include "nord_messages/PoseEstimate.h"
 #include "nord_messages/Vector2.h"
-#include "nord_messages/Classification.h"
-#include "nord_messages/ClassificationArray.h"
 #include "nord_messages/ClassificationSrv.h"
+#include "nord_messages/ObjectArray.h"
 #include "std_msgs/String.h"
 #include "point.hpp"
 #include <iostream>
@@ -25,19 +24,24 @@ template<class BT>
 class mission_one_behaviour : public behaviour<BT, mission_one_behaviour<BT>>
 {
     using base = behaviour<BT, mission_one_behaviour>;
-    using Classification = nord_messages::Classification;
 public:
     mission_one_behaviour(ros::NodeHandle& n) : n(n), base(*this, n)
     {
-        this->template subscribe<nord_messages::PoseEstimate>("/nord/estimation/gaussian", 1,
+        this->template subscribe<nord_messages::PoseEstimate>("/nord/estimation/gaussian", 9,
             [&](const nord_messages::PoseEstimate::ConstPtr& msg) {
                 base::tree.pose = *msg;
+                sort_unknown();
             });
-        this->template subscribe<nord_messages::PoseEstimate>("/nord/estimation/gaussian", 1,
-            [&](const nord_messages::PoseEstimate::ConstPtr& msg) {
-                base::tree.unknown.emplace_back(msg->x.mean, msg->y.mean);
+        this->template subscribe<nord_messages::ObjectArray>("/nord/estimation/objects", 9,
+            [&](const nord_messages::ObjectArray::ConstPtr& msg) {
+                base::tree.unknown.clear();
+                base::tree.unknown.reserve(msg->data.size());
+                for (auto& d : msg->data)
+                {
+                    base::tree.unknown.push_back(std::make_pair(d.id, point<2>(d.x, d.y)));
+                }
             });
-        this->template advertise<nord_messages::Vector2>("/nord/control/point", 1);
+        this->template advertise<nord_messages::Vector2>("/nord/control/point", 10);
         this->template advertise<std_msgs::String>("/espeak/string", 10);
 
         tick = n.createTimer(ros::Duration(1), [&](const ros::TimerEvent& e) {
@@ -63,6 +67,15 @@ public:
         return (target - point<2>(base::tree.pose.x.mean, base::tree.pose.y.mean)).length();
     }
 
+    void sort_unknown()
+    {
+        std::sort(base::tree.unknown.begin(), base::tree.unknown.end(),
+            [&](const std::pair<size_t, point<2>>& a,
+               const std::pair<size_t, point<2>>& b) {
+                   return distance_to(a.second) < distance_to(b.second);
+            });
+    }
+
     bool align(const point<2>& target)
     {
         std::cout << "align" << std::endl;
@@ -79,34 +92,27 @@ public:
         return true;
     }
 
-    bool classify()
+    bool classify(size_t id)
     {
         std::cout << "classify" << std::endl;
         ros::ServiceClient client = n.serviceClient<nord_messages::ClassificationSrv>(
             "/nord/vision/classification_service", true);
         nord_messages::ClassificationSrv srv;
+        srv.request.id = id;
         if (!client.call(srv))
         {
             std::cout << "\tcall failed!" << std::endl;
             return false;
         }
-        std::vector<Classification> new_classified = srv.response.classifications.data;
-        if (new_classified.size() == 0)
-        {
-            std::cout << "\tclassification found nothing!" << std::endl;
-            return false;
-        }
+        std::string new_class = srv.response.classification.data;
 
-        std::transform(new_classified.begin(), new_classified.end(),
-                       std::back_inserter(base::tree.classified),
-            [&](const Classification& c) {
-                base::tree.unknown.erase(std::remove_if(base::tree.unknown.begin(),
-                                                        base::tree.unknown.end(),
-                    [&](const point<2>& p) {
-                        return (p - point<2>(c.loc.x, c.loc.y)).length() < 0.05;
-                    }));
-                return c;
-            });
+        base::tree.unknown.erase(std::remove_if(base::tree.unknown.begin(),
+                                                base::tree.unknown.end(),
+            [&](const std::pair<size_t, point<2>>& p) {
+                return p.first == id;
+            }));
+
+        base::tree.classified.push_back(new_class);
 
         return true;
     }
@@ -116,11 +122,12 @@ public:
         std::cout << "announce" << std::endl;
         std::transform(base::tree.classified.begin(), base::tree.classified.end(),
                        std::back_inserter(base::tree.announced),
-                       [&](const Classification& c) {
-                           std_msgs::String msg = c.name;
+                       [&](const std::string& name) {
+                           std_msgs::String msg;
+                           msg.data = name;
                            std::cout << "\t" << msg.data << std::endl;
                            base::publish("/espeak/string", msg);
-                           return c;
+                           return name;
                        });
         base::tree.classified.clear();
         return true;
