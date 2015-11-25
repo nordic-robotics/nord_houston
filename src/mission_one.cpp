@@ -7,14 +7,38 @@
 #include "behaviour.hpp"
 #include "mission_one_behaviour.hpp"
 #include "seqsel/MissionOne.hpp"
+#include "nord_messages/NextNode.h"
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "nord_houston_wall_following");
+    ros::init(argc, argv, "nord_houston_mission_one");
     ros::NodeHandle n;
 
-    mission_one_behaviour<MissionOne> b(n);
+    std::vector<point<2>> path({
+        point<2>(0.17, 2.1),
+        point<2>(0.17, 1.5),
+        point<2>(0.17, 1.04),
+        point<2>(0.5, 1.04),
+        point<2>(0.99, 1.04),
+        point<2>(0.99, 1.5),
+        point<2>(0.99, 2.11),
+        point<2>(0.17, 2.1),
+        point<2>(0.17, 1.5),
+        point<2>(0.17, 1.04),
+        point<2>(0.5, 1.04),
+        point<2>(0.99, 1.04),
+        point<2>(0.99, 1.5),
+        point<2>(0.99, 2.11),
+        point<2>(0.17, 2.1),
+        point<2>(0.17, 1.5),
+        point<2>(0.17, 1.04),
+        point<2>(0.5, 1.04),
+        point<2>(0.99, 1.04),
+        point<2>(0.99, 1.5),
+        point<2>(0.99, 2.11)
+    });
 
+    mission_one_behaviour<MissionOne> b(n, path);
     b.behave();
 
     return 0;

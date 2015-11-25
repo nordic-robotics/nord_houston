@@ -32,7 +32,7 @@ protected:
         : subs({
             n.subscribe<std_msgs::Bool>("/nord/houston/mission_result", 10,
                 [&](const std_msgs::Bool::ConstPtr b) {
-                    has_result = true;
+                    
                     result = b->data;
                 }),
             n.subscribe<std_msgs::Empty>("/nord/houston/mission_abort", 10,
@@ -47,15 +47,22 @@ protected:
     template<class MSG>
     bool publish(const std::string& topic, const MSG& msg, bool await_result = false)
     {
-        has_result = false;
+	if(has_result){
+		has_result=false;
+		result=false;
+	}
+	if(result){
+		has_result=true;
+	}
+   
         std::cout << "sending instructions to " << topic;
         if (await_result)
             std::cout << ", awaiting result";
         std::cout << std::endl;
 
-        publishers[topic].publish(msg);
-
-        if (await_result)
+        publishers.at(topic).publish(msg);
+	return result;
+       /* if (await_result && )
         {
             static ros::Rate r(10);
             while (!has_result && ros::ok())
@@ -74,19 +81,25 @@ protected:
             return result;
         }
         else
-            return true;
+            return true;*/
     }
 
     template<class MSG>
     void advertise(const std::string& topic, uint32_t queue_size)
     {
-        publishers[topic] = n.advertise<MSG>(topic, queue_size);
+        std::cout << "advertising on " << topic << std::endl;
+        publishers.emplace(topic, n.advertise<MSG>(topic, queue_size));
     }
 
     template<class MSG, class Callback>
     void subscribe(const std::string& topic, uint32_t queue_size, Callback c)
     {
         subs.push_back(n.subscribe<MSG>(topic, queue_size, c));
+    }
+
+    void abort()
+    {
+        should_abort = true;
     }
 
     BT tree;
@@ -97,6 +110,6 @@ private:
     std::vector<ros::Subscriber> subs;
     ros::NodeHandle& n;
     bool has_result = false;
-    bool result;
+    bool result=false;
     bool should_abort = false;
 };
