@@ -21,18 +21,31 @@ public:
     mission_one_behaviour(ros::NodeHandle& n, const std::vector<point<2>> path)
         : n(n), base(*this, n)
     {
-        this->template subscribe<nord_messages::PoseEstimate>("/nord/estimation/gaussian", 9,
+        this->template subscribe<nord_messages::PoseEstimate>("/nord/estimation/pose_estimation", 9,
             [&](const nord_messages::PoseEstimate::ConstPtr& msg) {
                 tree.pose = *msg;
                 sort_unknown();
             });
+        int num_objects = 0;
         this->template subscribe<nord_messages::ObjectArray>("/nord/estimation/objects", 9,
             [&](const nord_messages::ObjectArray::ConstPtr& msg) {
                 tree.unknown.clear();
                 tree.unknown.reserve(msg->data.size());
+                int new_num_objects = 0;
                 for (auto& d : msg->data)
                 {
-                    tree.unknown.push_back(std::make_pair(d.id, point<2>(d.x, d.y)));
+                    new_num_objects++;
+                    if (std::find(classified_history.begin(),
+                                  classified_history.end(),
+                                  d.id) == classified_history.end())
+                    {
+                        tree.unknown.push_back(std::make_pair(d.id, point<2>(d.x, d.y)));
+                    }
+                }
+                if (new_num_objects > num_objects)
+                {
+                    num_objects = new_num_objects;
+                    this->template abort();
                 }
             });
         this->template advertise<nord_messages::NextNode>("/nord/control/point", 10);
@@ -70,6 +83,8 @@ public:
                const std::pair<size_t, point<2>>& b) {
                    return distance_to(a.second) < distance_to(b.second);
             });
+        //if (tree.unknown.size() > 0)
+        //    std::cout << "closest is " << distance_to(tree.unknown.front().second) << " away" << std::endl;
     }
 
     bool align(const point<2>& target)
@@ -80,7 +95,8 @@ public:
         point<2> current(tree.pose.x.mean, tree.pose.y.mean);
         point<2> dir = target - current;
         point<2> aligned;
-        if (dir.length() > tree.align_range)
+        go_to(current, 0);
+        if (dir.length() > tree.align_range && false)
         {
             aligned = target + (-dir).normalized();
             return go_to(aligned);
@@ -92,7 +108,7 @@ public:
     {
         std::cout << "classify" << std::endl;
         ros::ServiceClient client = n.serviceClient<nord_messages::ClassificationSrv>(
-            "/nord/vision/classification_service", true);
+            "/nord/vision/classification_service", false);
         nord_messages::ClassificationSrv srv;
         srv.request.id = id;
         if (!client.call(srv))
@@ -109,10 +125,10 @@ public:
         }
 
         tree.unknown.erase(std::remove_if(tree.unknown.begin(),
-                                                tree.unknown.end(),
+                                          tree.unknown.end(),
             [&](const std::pair<size_t, point<2>>& p) {
                 return p.first == id;
-            }));
+            }), tree.unknown.end());
 
         tree.classified.push_back(new_class);
 
@@ -149,4 +165,5 @@ public:
 private:
     ros::Timer tick;
     ros::NodeHandle& n;
+    std::vector<size_t> classified_history;
 };

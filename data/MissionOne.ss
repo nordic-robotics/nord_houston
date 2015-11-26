@@ -1,6 +1,6 @@
-#define classify_range 0.8f
+#define classify_range 0.6f
 
-#var float align_range = 0.6f
+#var float align_range = 0.56f
 #var float time_left
 #var std::vector<point<2>> path
 #var std::vector<std::pair<size_t, point<2>>> unknown

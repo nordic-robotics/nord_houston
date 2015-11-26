@@ -18,7 +18,6 @@ class behaviour
 public:
     void behave()
     {
-        ros::Rate r(10);
         while (ros::ok())
         {
             ros::spinOnce();
@@ -40,7 +39,7 @@ protected:
                     should_abort = true;
                 })
           }),
-          derived(derived), n(n)
+          derived(derived), n(n), r(10)
     { };
     virtual ~behaviour() { }
 
@@ -57,7 +56,6 @@ protected:
 
         if (await_result)
         {
-            static ros::Rate r(10);
             while (!has_result && ros::ok())
             {
                 if (should_abort)
@@ -89,6 +87,11 @@ protected:
         subs.push_back(n.subscribe<MSG>(topic, queue_size, c));
     }
 
+    void abort()
+    {
+        should_abort = true;
+    }
+
     BT tree;
 
 private:
@@ -99,4 +102,5 @@ private:
     bool has_result = false;
     bool result;
     bool should_abort = false;
+    ros::Rate r;
 };

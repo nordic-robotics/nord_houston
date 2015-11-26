@@ -7,9 +7,11 @@
 #include "behaviour.hpp"
 #include "mission_one_behaviour.hpp"
 #include "seqsel/MissionOne.hpp"
+#include <thread>
 
 int main(int argc, char** argv)
 {
+    using namespace std::literals;
     ros::init(argc, argv, "nord_houston_mission_one");
     ros::NodeHandle n;
 
@@ -38,6 +40,8 @@ int main(int argc, char** argv)
     });
 
     mission_one_behaviour<MissionOne> b(n, path);
+
+    std::this_thread::sleep_for(2s);
     b.behave();
 
 
