@@ -7,8 +7,8 @@ add_custom_target(seqsel ALL
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/seqsel"
                   COMMENT "Building SeqSel")
 add_custom_target(trees ALL
-                  COMMAND seqsel/Main data/WallFollow.ss src/seqsel/WallFollow.hpp
                   COMMAND seqsel/Main data/MissionOne.ss src/seqsel/MissionOne.hpp
+                  COMMAND seqsel/Main data/MissionTwo.ss src/seqsel/MissionTwo.hpp
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
                   COMMENT "Transpiling behaviour trees"
                   DEPENDS seqsel)
@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   nord_messages
+  roslib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -144,17 +145,22 @@ include_directories(
 ## Declare a C++ executable
 # add_executable(nord_houston_node src/nord_houston_node.cpp)
 add_executable(mission_one src/mission_one.cpp)
+add_executable(mission_two src/mission_two.cpp src/dijkstra/map.cpp src/dijkstra/path.cpp src/dijkstra/point.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(nord_houston_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(mission_one ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} trees)
+add_dependencies(mission_two ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} trees)
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(nord_houston_node
 #   ${catkin_LIBRARIES}
 # )
 target_link_libraries(mission_one
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(mission_two
   ${catkin_LIBRARIES}
 )
 

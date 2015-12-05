@@ -20,8 +20,15 @@ public:
     {
         while (ros::ok())
         {
-            ros::spinOnce();
-            tree.run(derived);
+            try
+            {
+                ros::spinOnce();
+                tree.run(derived);
+            }
+            catch (bool abort)
+            {
+                std::cout << "restarting" << std::endl;
+            }
             r.sleep();
         }
     }
@@ -62,7 +69,7 @@ protected:
                 {
                     should_abort = false;
                     std::cout << "abort!" << std::endl;
-                    return tree.run(derived);
+                    throw true;
                 }
 
                 ros::spinOnce();

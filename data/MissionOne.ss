@@ -1,7 +1,7 @@
 #define classify_range 0.6f
 
 #var float align_range = 0.56f
-#var float time_left
+#var float time_left = 300
 #var std::vector<point<2>> path
 #var std::vector<std::pair<size_t, point<2>>> unknown
 #var std::vector<std::string> classified
@@ -15,6 +15,7 @@ selector MissionOne:
         cond time_left < b.distance_to_exit_heuristic()
         call b.exit()
     sequence Classify:
+        cond false
         cond unknown.size() > 0
         cond b.distance_to(unknown.front().second) < #classify_range
         call b.align(unknown.front().second)

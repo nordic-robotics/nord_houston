@@ -7,11 +7,46 @@
 #include "nord_messages/ClassificationSrv.h"
 #include "nord_messages/EvidenceSrv.h"
 #include "nord_messages/ObjectArray.h"
+#include "nord_messages/MotorTwist.h"
 #include "std_msgs/String.h"
+#include "visualization_msgs/Marker.h"
 #include "point.hpp"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+
+// draws the map walls
+inline visualization_msgs::Marker create_path_message(const std::vector<point<2>>& path)
+{
+    visualization_msgs::Marker line_list;
+    line_list.id = 204;
+    line_list.type = visualization_msgs::Marker::LINE_LIST;
+    line_list.color.a = line_list.color.r = 1.0;
+    line_list.color.g = 0.8;
+    line_list.color.b = 0.1;
+    line_list.header.frame_id = "/map";
+    line_list.header.stamp = ros::Time::now();
+    line_list.ns = "houston_path";
+    line_list.action = visualization_msgs::Marker::ADD;
+    line_list.pose.orientation.w = 1.0;
+    line_list.lifetime = ros::Duration();
+    line_list.scale.x = 0.01;
+
+    for (size_t i = 0; i < path.size() - 1; i++)
+    {
+        geometry_msgs::Point p0, p1;
+        p0.x = path[i].x();
+        p0.y = path[i].y();
+        p1.x = path[i + 1].x();
+        p1.y = path[i + 1].y();
+        p0.z = p1.z = 0;
+        line_list.points.push_back(p0);
+        line_list.points.push_back(p1);
+    }
+
+    return line_list;
+}
+
 
 template<class BT>
 class mission_one_behaviour : public behaviour<BT, mission_one_behaviour<BT>>
@@ -32,19 +67,19 @@ public:
                 bool should_abort = false;
                 for (auto& d : msg->data)
                 {
-                    if (std::find_if(tree.unknown.begin(),
-                                  tree.unknown.end(),
-                                  [&](const std::pair<size_t, point<2>>& thing) {
-                                    return thing.first == d.id;
-                                  }) == tree.unknown.end())
+                    if (std::find(found_history.begin(),
+                                  found_history.end(),
+                                  static_cast<size_t>(d.id)) == found_history.end())
                     {
                         tree.unknown.push_back(std::make_pair(d.id, point<2>(d.x, d.y)));
+                        found_history.push_back(d.id);
                         should_abort = true;
                     }
                 }
                 if (should_abort)
                 {
                     std::cout << "found new object" << std::endl;
+                    std::cout << "num unknown: " << tree.unknown.size() << std::endl;
                     this->template abort();
                 }
             });
@@ -58,13 +93,14 @@ public:
                 this->template abort();
             });
         this->template advertise<nord_messages::NextNode>("/nord/control/point", 10);
+        this->template advertise<nord_messages::MotorTwist>("/nord/motor_controller/twist", 10);
         this->template advertise<std_msgs::String>("/espeak/string", 10);
+        this->template advertise<visualization_msgs::Marker>("/nord/map", 10);
 
         tick = n.createTimer(ros::Duration(1), [&](const ros::TimerEvent& e) {
             tree.time_left -= 1;
+            this->template publish("/nord/map", create_path_message(tree.path), false);
         });
-
-        tree.time_left = 60 * 5;
 
         tree.path = path;
     }
@@ -76,7 +112,10 @@ public:
 
     bool exit()
     {
-        std::cout << "exit" << std::endl;
+        nord_messages::MotorTwist msg;
+        msg.velocity = 0;
+        msg.angular_vel = 0;
+        this->template publish("/nord/motor_controller/twist", msg);
         return true;
     }
 
@@ -104,7 +143,7 @@ public:
         point<2> current(tree.pose.x.mean, tree.pose.y.mean);
         //point<2> dir = target - current;
         point<2> aligned;
-        return true;//go_to(target, 3);;
+        return go_to(target, 3);
     }
 
     bool classify(size_t id)
@@ -145,10 +184,10 @@ public:
             "/nord/evidence_service", false);
         nord_messages::EvidenceSrv srv2;
         // fill in
-        srv2.request.id = id;
-        srv2.request.position.x = obj_location.x();
-        srv2.request.position.y = obj_location.y();
-        srv2.request.classification.data = new_class;
+        srv2.request.data.id = id;
+        srv2.request.data.x = obj_location.x();
+        srv2.request.data.y = obj_location.y();
+        srv2.request.data.objectId.data = new_class;
         if (!client2.call(srv2))
         {
             std::cout << "evidence call failed!" << std::endl;
@@ -187,5 +226,5 @@ public:
 private:
     ros::Timer tick;
     ros::NodeHandle& n;
-    std::vector<size_t> classified_history;
+    std::vector<size_t> found_history;
 };
