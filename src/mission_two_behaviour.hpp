@@ -6,6 +6,7 @@
 #include "nord_messages/NextNode.h"
 #include "nord_messages/ClassificationSrv.h"
 #include "nord_messages/EvidenceSrv.h"
+#include "nord_messages/PlanSrv.h"
 #include "nord_messages/ObjectArray.h"
 #include "nord_messages/MotorTwist.h"
 #include "std_msgs/String.h"
@@ -25,9 +26,9 @@ class mission_two_behaviour : public behaviour<BT, mission_two_behaviour<BT>>
     using base = behaviour<BT, mission_two_behaviour>;
     using base::tree;
 public:
-    mission_two_behaviour(ros::NodeHandle& n, dijkstra::map* maze, const point<2> exit_point,
+    mission_two_behaviour(ros::NodeHandle& n, const point<2> exit_point,
                           const std::vector<std::pair<std::string, point<2>>>& objects)
-        : n(n), maze(maze), base(*this, n)
+        : n(n), base(*this, n)
     {
         this->template subscribe<nord_messages::PoseEstimate>("/nord/estimation/pose_estimation", 9,
             [&](const nord_messages::PoseEstimate::ConstPtr& msg) {
@@ -120,15 +121,27 @@ public:
         return this->template publish("/nord/control/point", msg, true);
     }
 
-    std::vector<point<2>> plan_path(const point<2>& current, const point<2>& target)
+    std::vector<point<2>> plan_path(const point<2>& current, const point<2>& target,
+                                    bool direct)
     {
-        auto path = maze->find(dijkstra::point(current.x(), current.y()),
-                               dijkstra::point(target.x(), target.y()));
+        ros::ServiceClient client = n.serviceClient<nord_messages::PlanSrv>(
+            "/nord/planning/plan_service", false);
+        nord_messages::PlanSrv srv;
+        srv.request.start.x = current.x();
+        srv.request.start.y = current.y();
+        srv.request.end.x = target.x();
+        srv.request.end.y = target.y();
+        srv.request.direct = direct;
+        if (!client.call(srv))
+        {
+            std::cout << "plan call failed!" << std::endl;
+            return std::vector<point<2>>();
+        }
         std::vector<point<2>> result;
-        std::transform(path.begin(), path.end(), std::back_inserter(result),
-            [](dijkstra::point const* p) {
-                std::cout << "plan: " << p->x << " " << p->y << std::endl;
-                return point<2>(p->x, p->y);
+        std::transform(srv.response.path.begin(), srv.response.path.end(),
+                       std::back_inserter(result),
+            [](const nord_messages::Vector2& p) {
+                return point<2>(p.x, p.y);
         });
         return result;
     }
@@ -159,5 +172,4 @@ private:
     ros::Timer tick;
     ros::NodeHandle& n;
     std::vector<size_t> found_history;
-    dijkstra::map* maze;
 };

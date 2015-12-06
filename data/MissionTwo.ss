@@ -20,11 +20,11 @@ selector MissionTwo:
             cond pose.y.stddev < #max_xy_stddev
             cond pose.theta.stddev < #max_theta_stddev
             call (unsure = false, true)
-            call (path = b.plan_path(point<2>(pose.x.mean, pose.y.mean), exit_point), true)
+            call (path = b.plan_path(point<2>(pose.x.mean, pose.y.mean), exit_point, false), true)
             call b.set_num_particles(10000)
     sequence Timeout:
         cond time_left < b.distance_to_exit_heuristic()
-        call (path = b.plan_path(point<2>(pose.x.mean, pose.y.mean), exit_point), true)
+        call (path = b.plan_path(point<2>(pose.x.mean, pose.y.mean), exit_point, true), true)
     sequence Classify:
         cond unannounced.size() > 0
         cond b.distance_to(unannounced.front().second) < #announce_range

@@ -14,7 +14,6 @@
 #include <thread>
 #include <cassert>
 
-
 std::vector<std::pair<std::string, point<2>>> load_objects(std::string filename)
 {
     std::ifstream file(filename);
@@ -43,11 +42,9 @@ int main(int argc, char** argv)
     assert(argc == 3);
     point<2> exit_point(std::stod(argv[1]), std::stod(argv[2]));
 
-    dijkstra::map maze;
-    load_graph(ros::package::getPath("nord_planning")+"/links.txt", maze);
     auto objects = load_objects(ros::package::getPath("nord_vision")+"/data/objects.txt");
 
-    mission_two_behaviour<MissionTwo> b(n, &maze, exit_point, objects);
+    mission_two_behaviour<MissionTwo> b(n, exit_point, objects);
 
     std::this_thread::sleep_for(2s);
     b.behave();
