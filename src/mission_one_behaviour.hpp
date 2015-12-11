@@ -6,9 +6,12 @@
 #include "nord_messages/NextNode.h"
 #include "nord_messages/ClassificationSrv.h"
 #include "nord_messages/EvidenceSrv.h"
+#include "nord_messages/PlanSrv.h"
+#include "nord_messages/PromptEvidenceReportingSrv.h"
 #include "nord_messages/ObjectArray.h"
 #include "nord_messages/MotorTwist.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Int32.h"
 #include "visualization_msgs/Marker.h"
 #include "point.hpp"
 #include <iostream>
@@ -54,7 +57,8 @@ class mission_one_behaviour : public behaviour<BT, mission_one_behaviour<BT>>
     using base = behaviour<BT, mission_one_behaviour>;
     using base::tree;
 public:
-    mission_one_behaviour(ros::NodeHandle& n, const std::vector<point<2>> path)
+    mission_one_behaviour(ros::NodeHandle& n, const point<2> exit_point,
+                          const std::vector<point<2>> path)
         : n(n), base(*this, n)
     {
         this->template subscribe<nord_messages::PoseEstimate>("/nord/estimation/pose_estimation", 9,
@@ -62,7 +66,7 @@ public:
                 tree.pose = *msg;
                 sort_unknown();
             });
-        this->template subscribe<nord_messages::ObjectArray>("/nord/estimation/objects", 9,
+        this->template subscribe<nord_messages::ObjectArray>("/nord/vision/igo", 9,
             [&](const nord_messages::ObjectArray::ConstPtr& msg) {
                 bool should_abort = false;
                 for (auto& d : msg->data)
@@ -99,10 +103,38 @@ public:
 
         tick = n.createTimer(ros::Duration(1), [&](const ros::TimerEvent& e) {
             tree.time_left -= 1;
-            this->template publish("/nord/map", create_path_message(tree.path), false);
+            this->template publish("/nord/map", create_path_message(tree.path), false, false);
         });
 
         tree.path = path;
+        tree.exit_point = exit_point;
+    }
+
+    std::vector<point<2>> plan_path(const point<2>& current, const point<2>& target,
+                                    bool direct)
+    {
+        ros::ServiceClient client = n.serviceClient<nord_messages::PlanSrv>(
+            "/nord_planning/plan_service", false);
+        nord_messages::PlanSrv srv;
+        srv.request.start.x = current.x();
+        srv.request.start.y = current.y();
+        srv.request.end.x = target.x();
+        srv.request.end.y = target.y();
+        srv.request.direct = direct;
+        if (!client.call(srv))
+        {
+            std::cout << "plan call failed!" << std::endl;
+            return std::vector<point<2>>();
+        }
+        std::cout << "new plan:" << std::endl;
+        std::vector<point<2>> result;
+        std::transform(srv.response.path.begin(), srv.response.path.end(),
+                       std::back_inserter(result),
+            [](const nord_messages::Vector2& p) {
+                std::cout << "\t" << p.x << " " << p.y << std::endl;
+                return point<2>(p.x, p.y);
+        });
+        return result;
     }
 
     float distance_to_exit_heuristic()
@@ -131,8 +163,6 @@ public:
                const std::pair<size_t, point<2>>& b) {
                    return distance_to(a.second) < distance_to(b.second);
             });
-        //if (tree.unknown.size() > 0)
-        //    std::cout << "closest is " << distance_to(tree.unknown.front().second) << " away" << std::endl;
     }
 
     bool align(const point<2>& target)
@@ -149,16 +179,16 @@ public:
     bool classify(size_t id)
     {
         std::cout << "classify" << std::endl;
-        ros::ServiceClient client = n.serviceClient<nord_messages::ClassificationSrv>(
-            "/nord/vision/classification_service", false);
-        nord_messages::ClassificationSrv srv;
+        ros::ServiceClient client = n.serviceClient<nord_messages::PromptEvidenceReportingSrv>(
+            "/nord/vision/prompt_evidence_reporting_service", false);
+        nord_messages::PromptEvidenceReportingSrv srv;
         srv.request.id = id;
         if (!client.call(srv))
         {
             std::cout << "call failed!" << std::endl;
             return false;
         }
-        std::string new_class = srv.response.classification.data;
+        std::string new_class = srv.response.name;
 
         if (new_class == "")
         {
@@ -219,8 +249,22 @@ public:
         msg.x = p.x();
         msg.y = p.y();
         msg.move = move;
+        msg.sequence_number = base::get_sequence_number();
+        std::cout << "SENDING the order #" << msg.sequence_number << std::endl;
 
         return this->template publish("/nord/control/point", msg, true);
+    }
+
+protected:
+    virtual void abort()
+    {
+        base::abort();
+
+        std::cout << "virtual abort" << std::endl;
+
+        go_to(point<2>(), 0);
+
+        tree.path_dijkstra.clear();
     }
 
 private:

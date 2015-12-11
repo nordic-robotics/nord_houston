@@ -125,7 +125,7 @@ public:
                                     bool direct)
     {
         ros::ServiceClient client = n.serviceClient<nord_messages::PlanSrv>(
-            "/nord/planning/plan_service", false);
+            "/nord_planning/plan_service", false);
         nord_messages::PlanSrv srv;
         srv.request.start.x = current.x();
         srv.request.start.y = current.y();

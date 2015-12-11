@@ -81,10 +81,6 @@ std::vector<point<2>> path_fuck_you({
        // point<2>(0.15, 0.23),
         point<2>(2.22, 0.23),
         point<2>(2.22, 0.68),
-point<2>(2.22, 0.23),
-point<2>(0.20, 0.21),
-point<2>(2.22, 0.23),
-point<2>(2.22, 0.68),
         point<2>(1.83, 0.68),
         point<2>(1.83, 1.1),
         point<2>(2.22, 1.1),
@@ -98,8 +94,7 @@ point<2>(2.22, 0.68),
         point<2>(0.5, 1.04),
         point<2>(0.99, 1.04),
         point<2>(0.99, 1.5),
-        point<2>(0.99, 2.11),
-        point<2>(0.17, 2.1)
+        point<2>(0.99, 2.11)
     });
 
     std::vector<point<2>> path_planned({
@@ -167,9 +162,9 @@ point<2>(1.5, 2.25),
         point<2>(0.2, 0.2)
     });
 
-    auto actual_path = read_path(ros::package::getPath("nord_houston")+"/data/plan.txt");
+    auto actual_path = read_path(ros::package::getPath("nord_planning")+"/data/plan.txt");
 
-    mission_one_behaviour<MissionOne> b(n, path_fuck_you);
+    mission_one_behaviour<MissionOne> b(n, point<2>(0, 0.15), actual_path);
 
     std::this_thread::sleep_for(2s);
     b.behave();

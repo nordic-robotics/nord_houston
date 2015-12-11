@@ -4,6 +4,7 @@
 #include "nord_messages/Command.h"
 #include "nord_messages/IRSensors.h"
 #include "ras_arduino_msgs/Encoders.h"
+#include "std_msgs/Int32.h"
 #include <vector>
 #include <utility>
 #include <string>
@@ -27,6 +28,10 @@ public:
             }
             catch (bool abort)
             {
+                for (size_t i = 0; i < 0; i++)
+                {
+                    r.sleep();
+                }
                 std::cout << "restarting" << std::endl;
             }
             r.sleep();
@@ -36,14 +41,27 @@ public:
 protected:
     behaviour(Derived& derived, ros::NodeHandle& n)
         : subs({
-            n.subscribe<std_msgs::Bool>("/nord/houston/mission_result", 10,
-                [&](const std_msgs::Bool::ConstPtr b) {
-                    has_result = true;
-                    result = b->data;
+            n.subscribe<std_msgs::Int32>("/nord/houston/mission_result", 1,
+                [&, this](const std_msgs::Int32::ConstPtr seq) {
+                    if (seq->data == sequence_number)
+                    {
+                        has_result = true;
+                        result = true;
+                        std::cout << "SUCCESS on order #" << seq->data << std::endl;
+                    }
+                    else if (seq->data > sequence_number)
+                    {
+                        std::cout << "OOPS received #" << seq->data << std::endl;
+                        exit(1);
+                    }
+                    else
+                    {
+                        std::cout << "OLD order #" << seq->data << std::endl;
+                    }
                 }),
-            n.subscribe<std_msgs::Empty>("/nord/houston/mission_abort", 10,
-                [&](const std_msgs::Empty::ConstPtr e) {
-                    should_abort = true;
+            n.subscribe<std_msgs::Empty>("/nord/houston/mission_abort", 1,
+                [&, this](const std_msgs::Empty::ConstPtr e) {
+                    abort();
                 })
           }),
           derived(derived), n(n), r(10)
@@ -51,19 +69,24 @@ protected:
     virtual ~behaviour() { }
 
     template<class MSG>
-    bool publish(const std::string& topic, const MSG& msg, bool await_result = false)
+    bool publish(const std::string& topic, const MSG& msg, bool await_result = false,
+                 bool print = true)
     {
         has_result = false;
-        std::cout << "sending instructions to " << topic;
-        if (await_result)
-            std::cout << ", awaiting result";
-        std::cout << std::endl;
+        if (print)
+        {
+            std::cout << "sending instructions to " << topic;
+            if (await_result)
+                std::cout << ", awaiting result";
+            std::cout << std::endl;
+        }
 
         publishers[topic].publish(msg);
 
         if (await_result)
         {
-            while (!has_result && ros::ok())
+
+            while (!has_result)
             {
                 if (should_abort)
                 {
@@ -94,9 +117,14 @@ protected:
         subs.push_back(n.subscribe<MSG>(topic, queue_size, c));
     }
 
-    void abort()
+    virtual void abort()
     {
         should_abort = true;
+    }
+
+    int32_t get_sequence_number()
+    {
+        return ++sequence_number;
     }
 
     BT tree;
@@ -110,4 +138,5 @@ private:
     bool result;
     bool should_abort = false;
     ros::Rate r;
+    int32_t sequence_number = 1;
 };

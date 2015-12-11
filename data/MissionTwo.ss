@@ -22,6 +22,10 @@ selector MissionTwo:
             call (unsure = false, true)
             call (path = b.plan_path(point<2>(pose.x.mean, pose.y.mean), exit_point, false), true)
             call b.set_num_particles(10000)
+    sequence Fuck:
+        cond path.size() > 0
+        cond b.distance_to(path.front()) < 0.015
+        call (path.erase(path.begin()), true)
     sequence Timeout:
         cond time_left < b.distance_to_exit_heuristic()
         call (path = b.plan_path(point<2>(pose.x.mean, pose.y.mean), exit_point, true), true)
